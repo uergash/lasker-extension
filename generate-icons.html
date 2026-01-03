@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Icon Generator</title>
+</head>
+<body>
+  <h1>Chrome Extension Icon Generator</h1>
+  <p>Open this file in a browser and right-click each canvas to save as PNG.</p>
+  
+  <div style="margin: 20px;">
+    <h2>16x16 Icon</h2>
+    <canvas id="icon16" width="16" height="16"></canvas>
+    <button onclick="downloadIcon('icon16', 16)">Download 16x16</button>
+  </div>
+  
+  <div style="margin: 20px;">
+    <h2>48x48 Icon</h2>
+    <canvas id="icon48" width="48" height="48"></canvas>
+    <button onclick="downloadIcon('icon48', 48)">Download 48x48</button>
+  </div>
+  
+  <div style="margin: 20px;">
+    <h2>128x128 Icon</h2>
+    <canvas id="icon128" width="128" height="128"></canvas>
+    <button onclick="downloadIcon('icon128', 128)">Download 128x128</button>
+  </div>
+
+  <script>
+    function drawIcon(canvas, size) {
+      const ctx = canvas.getContext('2d');
+      
+      // Create gradient
+      const gradient = ctx.createLinearGradient(0, 0, size, size);
+      gradient.addColorStop(0, '#667eea');
+      gradient.addColorStop(1, '#764ba2');
+      
+      // Draw rounded rectangle background
+      const radius = size * 0.1875; // 24/128 ratio
+      ctx.fillStyle = gradient;
+      roundRect(ctx, 0, 0, size, size, radius);
+      ctx.fill();
+      
+      // Draw microphone body
+      const micX = size * 0.5;
+      const micY = size * 0.40625; // 52/128
+      const micWidth = size * 0.34375; // 44/128
+      const micHeight = size * 0.3125; // 40/128
+      
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+      ctx.beginPath();
+      ctx.ellipse(micX, micY, micWidth / 2, micHeight / 2, 0, 0, Math.PI * 2);
+      ctx.fill();
+      
+      // Draw microphone stand
+      const standY = micY + micHeight / 2;
+      const standHeight = size * 0.15625; // 20/128
+      ctx.fillRect(micX - micWidth * 0.2, standY, micWidth * 0.4, standHeight);
+      
+      // Draw microphone circle
+      const circleRadius = size * 0.0625; // 8/128
+      ctx.beginPath();
+      ctx.arc(micX, micY - micHeight * 0.2, circleRadius, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    
+    function roundRect(ctx, x, y, width, height, radius) {
+      ctx.beginPath();
+      ctx.moveTo(x + radius, y);
+      ctx.lineTo(x + width - radius, y);
+      ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+      ctx.lineTo(x + width, y + height - radius);
+      ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+      ctx.lineTo(x + radius, y + height);
+      ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+      ctx.lineTo(x, y + radius);
+      ctx.quadraticCurveTo(x, y, x + radius, y);
+      ctx.closePath();
+    }
+    
+    function downloadIcon(canvasId, size) {
+      const canvas = document.getElementById(canvasId);
+      const link = document.createElement('a');
+      link.download = `icon${size}.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    }
+    
+    // Draw all icons on load
+    window.onload = function() {
+      drawIcon(document.getElementById('icon16'), 16);
+      drawIcon(document.getElementById('icon48'), 48);
+      drawIcon(document.getElementById('icon128'), 128);
+    };
+  </script>
+</body>
+</html>
+

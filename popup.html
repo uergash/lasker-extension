@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lasker</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <!-- Setup/Login View (shown when email not configured) -->
+  <div id="setup-view" class="view login-view">
+    <div class="container">
+      <div class="brand-header">
+        <img src="icons/icon48.png" alt="Lasker" class="brand-logo">
+        <h1 class="brand-name">Lasker</h1>
+        <p class="brand-tagline">Share your feedback</p>
+      </div>
+      
+      <form id="setup-form">
+        <div class="input-group">
+          <label for="email-input">Work Email</label>
+          <input 
+            type="email" 
+            id="email-input" 
+            placeholder="your.email@company.com" 
+            required
+            autocomplete="email"
+          >
+        </div>
+        
+        <button type="submit" id="save-email-btn" class="btn btn-primary">
+          Save & Continue
+        </button>
+      </form>
+      
+      <div id="setup-error" class="error-message" style="display: none;"></div>
+    </div>
+  </div>
+
+  <!-- Pre-Recording View (shown when email is configured, before recording) -->
+  <div id="pre-recording-view" class="view" style="display: none;">
+    <div class="container">
+      <div class="brand-header">
+        <img src="icons/icon48.png" alt="Lasker" class="brand-logo">
+        <h1 class="brand-name">Lasker</h1>
+        <p class="brand-tagline">Share your feedback</p>
+      </div>
+      
+      <div class="pre-recording-content">
+        <p class="instruction-text">Record your thoughts</p>
+        
+        <button id="record-btn" class="btn btn-record">
+          <svg class="mic-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+            <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+            <line x1="12" y1="19" x2="12" y2="23"></line>
+            <line x1="8" y1="23" x2="16" y2="23"></line>
+          </svg>
+          <span class="btn-text">Start Recording</span>
+        </button>
+      </div>
+      
+      <!-- Permission Instructions (shown when permission is denied) -->
+      <div id="permission-instructions" class="permission-instructions" style="display: none;">
+        <h3>How to Enable Microphone Access:</h3>
+        <p><strong>Option 1: Via Chrome Settings</strong></p>
+        <ol>
+          <li>Copy this URL: <code>chrome://settings/content/microphone</code></li>
+          <li>Paste it in Chrome's address bar and press Enter</li>
+          <li>Find this extension in the "Block" list</li>
+          <li>Click the <strong>X</strong> to remove it from blocked sites</li>
+          <li>Close this popup and try recording again</li>
+        </ol>
+        <p><strong>Option 2: Via Extension Icon</strong></p>
+        <ol>
+          <li>Right-click the extension icon in Chrome's toolbar</li>
+          <li>Select "Manage extension" or "Options"</li>
+          <li>Look for microphone permissions and enable them</li>
+        </ol>
+        <p class="note">Note: Chrome remembers denied permissions. You need to manually reset it in settings.</p>
+      </div>
+      
+      <!-- Settings -->
+      <div class="settings">
+        <button id="change-email-btn" class="btn-link">Change Email</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Recording View (shown during active recording) -->
+  <div id="recording-view" class="view" style="display: none;">
+    <div class="container">
+      <div class="brand-header">
+        <img src="icons/icon48.png" alt="Lasker" class="brand-logo">
+        <h1 class="brand-name">Lasker</h1>
+        <p class="brand-tagline">Recording</p>
+      </div>
+      
+      <div class="recording-content">
+        <div class="mic-container">
+          <div class="pulse-ring"></div>
+          <svg class="mic-icon-large" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+            <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+            <line x1="12" y1="19" x2="12" y2="23"></line>
+            <line x1="8" y1="23" x2="16" y2="23"></line>
+          </svg>
+        </div>
+        
+        <div class="timer-container">
+          <div id="timer" class="timer">02:00</div>
+        </div>
+        
+        <button id="stop-btn" class="btn btn-stop">
+          <span class="btn-icon">⏹</span>
+          <span class="btn-text">Stop Recording</span>
+        </button>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Loading View (shown while processing) -->
+  <div id="loading-view" class="view" style="display: none;">
+    <div class="container">
+      <div class="brand-header">
+        <img src="icons/icon48.png" alt="Lasker" class="brand-logo">
+        <h1 class="brand-name">Lasker</h1>
+        <p class="brand-tagline">Processing</p>
+      </div>
+      
+      <div class="loading-content">
+        <div class="loading-spinner"></div>
+        <p class="loading-text">Transcribing your recording...</p>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Result View (shown after recording completes) -->
+  <div id="result-view" class="view" style="display: none;">
+    <div class="container">
+      <div class="result-content">
+        <!-- Success Message -->
+        <div id="result-success" class="result-message result-success" style="display: none;">
+          <div class="result-icon-wrapper">
+            <svg class="result-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+          </div>
+          <h2 class="result-title">Recorded</h2>
+          <p class="result-text">Your feedback has been transcribed and is being processed.</p>
+          
+          <div id="result-transcript" class="result-transcript" style="display: none;">
+            <div class="transcript-header">
+              <svg class="transcript-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+              </svg>
+              <p class="transcript-label">Transcript:</p>
+            </div>
+            <p class="transcript-text"></p>
+          </div>
+        </div>
+        
+        <!-- Error Message -->
+        <div id="result-error" class="result-message result-error" style="display: none;">
+          <div class="result-icon-wrapper">
+            <svg class="result-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="15" y1="9" x2="9" y2="15"></line>
+              <line x1="9" y1="9" x2="15" y2="15"></line>
+            </svg>
+          </div>
+          <h2 class="result-title">Oops!</h2>
+          <p class="result-text"></p>
+        </div>
+        
+        <button id="record-another-btn" class="btn btn-primary btn-record-another">
+          <svg class="mic-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+            <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+            <line x1="12" y1="19" x2="12" y2="23"></line>
+            <line x1="8" y1="23" x2="16" y2="23"></line>
+          </svg>
+          <span class="btn-text">Record Another</span>
+        </button>
+        
+        <div class="settings">
+          <button id="change-email-btn-result" class="btn-link">Change Email</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
+
