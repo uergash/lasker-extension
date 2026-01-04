@@ -37,6 +37,47 @@
     </div>
   </div>
 
+  <!-- Email Preview View (shown when email is extracted from Gmail) -->
+  <div id="email-preview-view" class="view" style="display: none;">
+    <div class="container">
+      <div class="brand-header">
+        <img src="icons/icon48.png" alt="Lasker" class="brand-logo">
+        <h1 class="brand-name">Lasker</h1>
+        <p class="brand-tagline">Extract Email Insights</p>
+      </div>
+      
+      <div class="email-preview-content">
+        <div class="email-preview-card">
+          <div class="email-preview-header">
+            <svg class="email-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+              <polyline points="22,6 12,13 2,6"></polyline>
+            </svg>
+            <div class="email-preview-meta">
+              <p class="email-from" id="email-from"></p>
+              <p class="email-subject" id="email-subject"></p>
+            </div>
+          </div>
+          
+          <div class="email-preview-body">
+            <p class="email-snippet" id="email-snippet"></p>
+          </div>
+        </div>
+        
+        <button id="submit-email-btn" class="btn btn-primary">
+          <svg class="submit-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+            <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+            <line x1="12" y1="22.08" x2="12" y2="12"></line>
+          </svg>
+          <span class="btn-text">Extract Insights</span>
+        </button>
+        
+        <button id="cancel-email-btn" class="btn-link">Cancel</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Pre-Recording View (shown when email is configured, before recording) -->
   <div id="pre-recording-view" class="view" style="display: none;">
     <div class="container">

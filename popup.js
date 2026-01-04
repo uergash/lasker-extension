@@ -1,14 +1,17 @@
 // Configuration
-const EDGE_FUNCTION_URL = 'https://wrayzjdnlimxzqcswots.supabase.co/functions/v1/submit-voice-insight';
+const VOICE_EDGE_FUNCTION_URL = 'https://wrayzjdnlimxzqcswots.supabase.co/functions/v1/submit-voice-insight';
+const EMAIL_WEBHOOK_URL = 'https://YOUR_N8N_INSTANCE/webhook/email-submission'; // TODO: Update with actual n8n webhook URL
 const MAX_DURATION_SECONDS = 120; // 2 minutes
 
 // State
 let isRecording = false;
 let recordingStartTime = null;
 let timerInterval = null;
+let pendingEmailData = null;
 
 // DOM Elements
 const setupView = document.getElementById('setup-view');
+const emailPreviewView = document.getElementById('email-preview-view');
 const preRecordingView = document.getElementById('pre-recording-view');
 const recordingView = document.getElementById('recording-view');
 const loadingView = document.getElementById('loading-view');
@@ -27,14 +30,42 @@ const recordAnotherBtn = document.getElementById('record-another-btn');
 const resultSuccess = document.getElementById('result-success');
 const resultError = document.getElementById('result-error');
 const resultTranscript = document.getElementById('result-transcript');
+const submitEmailBtn = document.getElementById('submit-email-btn');
+const cancelEmailBtn = document.getElementById('cancel-email-btn');
+const emailFrom = document.getElementById('email-from');
+const emailSubject = document.getElementById('email-subject');
+const emailSnippet = document.getElementById('email-snippet');
 
 // Initialize
 document.addEventListener('DOMContentLoaded', async () => {
+  await checkForPendingEmail();
   await checkEmailSetup();
   setupEventListeners();
   await checkMicrophonePermission();
   await checkActiveRecording();
 });
+
+// Check if there's a pending email from Gmail
+async function checkForPendingEmail() {
+  try {
+    const result = await chrome.storage.local.get(['pendingEmail', 'userEmail']);
+    
+    if (result.pendingEmail && result.userEmail) {
+      // Show email preview view
+      pendingEmailData = result.pendingEmail;
+      showEmailPreviewView(result.pendingEmail);
+      
+      // Clear pending email from storage
+      await chrome.storage.local.remove(['pendingEmail']);
+      return true;
+    }
+    
+    return false;
+  } catch (error) {
+    console.error('Error checking for pending email:', error);
+    return false;
+  }
+}
 
 // Check if there's an active recording
 async function checkActiveRecording() {
@@ -88,6 +119,7 @@ async function checkEmailSetup() {
 
 // Show setup view
 function showSetupView() {
+  emailPreviewView.style.display = 'none';
   preRecordingView.style.display = 'none';
   recordingView.style.display = 'none';
   loadingView.style.display = 'none';
@@ -104,9 +136,38 @@ function showSetupView() {
   setupError.style.display = 'none';
 }
 
+// Show email preview view
+function showEmailPreviewView(emailData) {
+  setupView.style.display = 'none';
+  preRecordingView.style.display = 'none';
+  recordingView.style.display = 'none';
+  loadingView.style.display = 'none';
+  resultView.style.display = 'none';
+  
+  // Populate email preview
+  emailFrom.textContent = `From: ${emailData.from.name || emailData.from.email}`;
+  emailSubject.textContent = emailData.subject || '(No subject)';
+  
+  // Create snippet (first 200 chars)
+  const snippet = emailData.body.length > 200 
+    ? emailData.body.substring(0, 200) + '...' 
+    : emailData.body;
+  emailSnippet.textContent = snippet;
+  
+  // Small delay for smooth transition
+  setTimeout(() => {
+    emailPreviewView.style.display = 'block';
+    emailPreviewView.style.opacity = '0';
+    requestAnimationFrame(() => {
+      emailPreviewView.style.opacity = '1';
+    });
+  }, 10);
+}
+
 // Show pre-recording view (before recording starts)
 function showRecordingView(email) {
   setupView.style.display = 'none';
+  emailPreviewView.style.display = 'none';
   recordingView.style.display = 'none';
   loadingView.style.display = 'none';
   resultView.style.display = 'none';
@@ -126,6 +187,7 @@ function showRecordingView(email) {
 //Show pre-recording view without email param
 function showPreRecordingView() {
   setupView.style.display = 'none';
+  emailPreviewView.style.display = 'none';
   recordingView.style.display = 'none';
   loadingView.style.display = 'none';
   resultView.style.display = 'none';
@@ -141,6 +203,7 @@ function showPreRecordingView() {
 
 // Show active recording view (during recording)
 function showActiveRecordingView() {
+  emailPreviewView.style.display = 'none';
   preRecordingView.style.display = 'none';
   loadingView.style.display = 'none';
   resultView.style.display = 'none';
@@ -155,6 +218,7 @@ function showActiveRecordingView() {
 
 // Show loading view (processing)
 function showLoadingView() {
+  emailPreviewView.style.display = 'none';
   preRecordingView.style.display = 'none';
   recordingView.style.display = 'none';
   resultView.style.display = 'none';
@@ -169,6 +233,7 @@ function showLoadingView() {
 
 // Show result view (after recording completes)
 function showResultView(success, message, transcriptPreview = null) {
+  emailPreviewView.style.display = 'none';
   preRecordingView.style.display = 'none';
   recordingView.style.display = 'none';
   loadingView.style.display = 'none';
@@ -211,6 +276,8 @@ function setupEventListeners() {
   changeEmailBtn.addEventListener('click', handleChangeEmail);
   changeEmailBtnResult.addEventListener('click', handleChangeEmail);
   recordAnotherBtn.addEventListener('click', showPreRecordingView);
+  submitEmailBtn.addEventListener('click', handleSubmitEmail);
+  cancelEmailBtn.addEventListener('click', handleCancelEmail);
 }
 
 // Handle email submission
@@ -378,12 +445,101 @@ async function handleRecordingComplete(base64Audio, duration) {
   }
 }
 
+// Handle email submission
+async function handleSubmitEmail() {
+  if (!pendingEmailData) {
+    showResultView(false, 'No email data found. Please try again.');
+    return;
+  }
+  
+  try {
+    // Show loading view
+    showLoadingView();
+    
+    // Get user email
+    const result = await chrome.storage.local.get(['userEmail']);
+    const userEmail = result.userEmail;
+    
+    // Submit to n8n webhook
+    await submitEmail({
+      type: 'email',
+      email: pendingEmailData,
+      metadata: {
+        userId: userEmail,
+        timestamp: new Date().toISOString(),
+        source: 'gmail'
+      }
+    });
+    
+  } catch (error) {
+    console.error('Error submitting email:', error);
+    showResultView(false, 'Failed to submit email. Please try again.');
+  }
+}
+
+// Handle cancel email
+function handleCancelEmail() {
+  pendingEmailData = null;
+  showPreRecordingView();
+}
+
+// Submit email to n8n webhook
+async function submitEmail(data) {
+  try {
+    submitEmailBtn.disabled = true;
+    
+    const response = await fetch(EMAIL_WEBHOOK_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data)
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+      throw new Error(errorData.error || `HTTP ${response.status}`);
+    }
+    
+    const result = await response.json();
+    console.log('Email submission response:', result);
+    
+    if (!result.success) {
+      console.error('Email submission failed:', result);
+      throw new Error(result.error || 'Submission failed');
+    }
+    
+    // Build success message
+    const mainMessage = 'Email extracted successfully! Your insights are being processed.';
+    
+    // Show result view with success
+    showResultView(true, mainMessage);
+    
+    // Clear pending email data
+    pendingEmailData = null;
+    
+  } catch (error) {
+    console.error('Error submitting email:', error);
+    
+    let errorMsg = 'Failed to submit email. ';
+    if (error.message.includes('Network')) {
+      errorMsg = 'Network error. Please check your connection and try again.';
+    } else {
+      errorMsg = error.message || 'Something went wrong. Please try again.';
+    }
+    
+    showResultView(false, errorMsg);
+  } finally {
+    submitEmailBtn.disabled = false;
+  }
+}
+
 // Submit recording to edge function
 async function submitRecording(data) {
   try {
     stopBtn.disabled = true;
     
-    const response = await fetch(EDGE_FUNCTION_URL, {
+    const response = await fetch(VOICE_EDGE_FUNCTION_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

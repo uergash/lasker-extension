@@ -1,16 +1,18 @@
 {
   "manifest_version": 3,
   "name": "Lasker",
-  "version": "1.0.0",
-  "description": "Record voice feedback and automatically process it into product insights",
+  "version": "1.1.0",
+  "description": "Capture voice feedback and extract insights from customer emails",
   "permissions": [
     "storage",
     "activeTab",
-    "offscreen"
+    "offscreen",
+    "tabs"
   ],
   "host_permissions": [
     "https://*.supabase.co/*",
-    "https://*.functions.supabase.co/*"
+    "https://*.functions.supabase.co/*",
+    "https://mail.google.com/*"
   ],
   "action": {
     "default_popup": "popup.html",
@@ -27,6 +29,14 @@
   },
   "background": {
     "service_worker": "background.js"
-  }
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://mail.google.com/*"],
+      "js": ["content-scripts/gmail.js"],
+      "css": ["content-scripts/gmail.css"],
+      "run_at": "document_idle"
+    }
+  ]
 }
 

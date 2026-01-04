@@ -675,3 +675,84 @@ h1 {
     transform: rotate(360deg);
   }
 }
+
+/* Email Preview View Styles */
+.email-preview-content {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 20px;
+  width: 100%;
+}
+
+.email-preview-card {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.email-preview-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.email-icon {
+  width: 20px;
+  height: 20px;
+  stroke: #6b7280;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.submit-icon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.email-preview-meta {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.email-from {
+  font-size: 13px;
+  color: #6b7280;
+  font-weight: 500;
+  margin: 0;
+  letter-spacing: 0.2px;
+}
+
+.email-subject {
+  font-size: 14px;
+  color: #111827;
+  font-weight: 600;
+  margin: 0;
+  line-height: 1.4;
+  letter-spacing: 0.2px;
+}
+
+.email-preview-body {
+  margin-top: 4px;
+}
+
+.email-snippet {
+  font-size: 13px;
+  color: #4b5563;
+  line-height: 1.6;
+  margin: 0;
+  word-wrap: break-word;
+  white-space: pre-wrap;
+}
+
+/* Email-specific button spacing */
+#cancel-email-btn {
+  margin-top: 8px;
+}

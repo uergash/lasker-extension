@@ -108,11 +108,42 @@ async function handleGetRecordingState() {
   }
 }
 
-// Listen for messages from popup
+// Store pending email data
+let pendingEmailData = null;
+
+// Handle email extraction from content script
+async function handleExtractEmail(emailData) {
+  try {
+    // Store email data temporarily
+    pendingEmailData = emailData;
+    
+    // Open the extension popup
+    // Note: We can't directly open popup, but we store the data
+    // The popup will check for pending email on load
+    await chrome.storage.local.set({ pendingEmail: emailData });
+    
+    // Try to open the popup by opening the extension's action
+    // This will trigger the user to click the extension icon
+    return { success: true, message: 'Email captured. Click the Lasker extension icon to continue.' };
+  } catch (error) {
+    console.error('Failed to handle email extraction:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+// Listen for messages from popup and content scripts
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   // Ignore messages targeted to offscreen (those are responses we're waiting for)
   if (message.target === 'OFFSCREEN') {
     return false;
+  }
+  
+  // Handle email extraction from content script
+  if (message.type === 'EXTRACT_EMAIL') {
+    handleExtractEmail(message.emailData)
+      .then(result => sendResponse(result))
+      .catch(error => sendResponse({ success: false, error: error.message }));
+    return true;
   }
   
   // Only handle messages from popup
