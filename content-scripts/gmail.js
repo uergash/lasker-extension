@@ -237,28 +237,77 @@
   function injectButton() {
     if (buttonInjected) return;
     
-    // Find Gmail's toolbar (next to reply/forward buttons)
-    const toolbar = document.querySelector('div[role="toolbar"]');
-    
-    if (!toolbar) {
-      // Toolbar not ready yet
-      return;
-    }
-    
     // Check if button already exists
     if (document.getElementById(BUTTON_ID)) {
       buttonInjected = true;
       return;
     }
     
+    // When viewing an email, the action buttons are at the TOP of the page
+    // Look for the email header area with subject line
+    let injectionPoint = null;
+    
+    // Strategy 1: Inject near the subject line / email header
+    const subjectHeader = document.querySelector('h2.hP');
+    if (subjectHeader) {
+      // Find the container that holds the subject and actions
+      const headerContainer = subjectHeader.closest('div');
+      if (headerContainer) {
+        injectionPoint = headerContainer.parentElement;
+        console.log('[Lasker] Found injection point via subject header');
+      }
+    }
+    
+    // Strategy 2: Look for the top button bar with back/archive/delete icons
+    if (!injectionPoint) {
+      // These buttons are in a container at the very top when email is open
+      const topButtons = document.querySelectorAll('div[role="button"]');
+      for (const btn of topButtons) {
+        const ariaLabel = btn.getAttribute('aria-label');
+        // Look for "Back to" or navigation buttons
+        if (ariaLabel && ariaLabel.includes('Back to')) {
+          injectionPoint = btn.parentElement;
+          console.log('[Lasker] Found injection point via Back button');
+          break;
+        }
+      }
+    }
+    
+    // Strategy 3: Insert as a floating button above the email content
+    if (!injectionPoint) {
+      // Find the main email content area
+      const mainContent = document.querySelector('div[role="main"]');
+      if (mainContent) {
+        injectionPoint = mainContent;
+        console.log('[Lasker] Using main content area as injection point');
+      }
+    }
+    
+    if (!injectionPoint) {
+      console.log('[Lasker] Could not find injection point yet');
+      return;
+    }
+    
     // Create and inject button
     const button = createExtractButton();
     
-    // Insert at the beginning of toolbar
-    toolbar.insertBefore(button, toolbar.firstChild);
+    // Create a container for the button with proper positioning
+    const container = document.createElement('div');
+    container.id = 'lasker-button-container';
+    container.style.position = 'sticky';
+    container.style.top = '0';
+    container.style.zIndex = '1000';
+    container.style.padding = '12px 16px';
+    container.style.backgroundColor = '#f8f9fa';
+    container.style.borderBottom = '1px solid #e5e7eb';
+    container.style.marginBottom = '16px';
+    container.appendChild(button);
+    
+    // Insert at the beginning
+    injectionPoint.insertBefore(container, injectionPoint.firstChild);
     
     buttonInjected = true;
-    console.log('[Lasker] Extract button injected successfully');
+    console.log('[Lasker] ✓ Extract button injected successfully!');
   }
   
   // Remove button when not in email view
@@ -273,20 +322,22 @@
   // Check and update UI based on current view
   function checkAndUpdateUI() {
     const currentUrl = window.location.href;
+    const inEmailView = isEmailView();
     
-    // Only process if URL changed or first load
-    if (currentUrl === lastProcessedUrl) return;
-    
-    lastProcessedUrl = currentUrl;
-    
-    if (isEmailView()) {
+    // Check email view state instead of just URL changes
+    // This handles Gmail's SPA navigation that may not change the URL
+    if (inEmailView && !buttonInjected) {
+      // We're in email view and button isn't injected yet
       // Wait a bit for Gmail to fully render
       setTimeout(() => {
         injectButton();
       }, 500);
-    } else {
+    } else if (!inEmailView && buttonInjected) {
+      // We left email view, remove button
       removeButton();
     }
+    
+    lastProcessedUrl = currentUrl;
   }
   
   // Listen for URL changes (Gmail is a SPA)
