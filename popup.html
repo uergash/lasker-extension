@@ -7,6 +7,41 @@
   <link rel="stylesheet" href="popup.css">
 </head>
 <body>
+  <!-- Welcome View (shown on first open to request microphone permission) -->
+  <div id="welcome-view" class="view" style="display: none;">
+    <div class="container">
+      <div class="brand-header">
+        <img src="icons/icon48.png" alt="Lasker" class="brand-logo">
+        <h1 class="brand-name">Lasker</h1>
+        <p class="brand-tagline">Share your feedback</p>
+      </div>
+      
+      <div class="welcome-content">
+        <h2 class="welcome-title">Welcome!</h2>
+        <p class="welcome-description">Lasker helps you capture voice feedback and extract insights from customer emails.</p>
+        
+        <div class="permission-explainer">
+          <div class="permission-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+              <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+              <line x1="12" y1="19" x2="12" y2="23"></line>
+              <line x1="8" y1="23" x2="16" y2="23"></line>
+            </svg>
+          </div>
+          <div class="permission-text">
+            <p class="permission-title">Microphone Access</p>
+            <p class="permission-desc">We'll need access to your microphone to record your voice feedback.</p>
+          </div>
+        </div>
+        
+        <button id="get-started-btn" class="btn btn-primary">
+          <span class="btn-text">Get Started</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- Setup/Login View (shown when email not configured) -->
   <div id="setup-view" class="view login-view">
     <div class="container">
@@ -212,6 +247,12 @@
           </div>
           <h2 class="result-title">Oops!</h2>
           <p class="result-text"></p>
+        </div>
+        
+        <!-- Email Success Action (shown only for email flow) -->
+        <div id="email-success-action" class="email-success-action" style="display: none;">
+          <p class="helper-message">You're all set! Keep moving.</p>
+          <a href="#" id="record-insight-link" class="record-insight-link">Record an insight</a>
         </div>
         
         <button id="record-another-btn" class="btn btn-primary btn-record-another">

@@ -9,6 +9,7 @@
   let currentEmailData = null;
   let buttonInjected = false;
   let lastProcessedUrl = '';
+  let lastEmailSubject = '';
   
   // Detect email provider
   function detectProvider() {
@@ -26,7 +27,17 @@
       // Gmail: Check if we're in a conversation view
       const emailView = document.querySelector('div[role="main"]');
       const emailBody = document.querySelector('.a3s.aiL') || document.querySelector('.ii.gt');
-      return emailView && emailBody;
+      const hasSubject = document.querySelector('h2.hP');
+      const isInEmailView = emailView && emailBody && hasSubject;
+      
+      console.log('[Lasker] isEmailView check:', {
+        emailView: !!emailView,
+        emailBody: !!emailBody,
+        hasSubject: !!hasSubject,
+        result: isInEmailView
+      });
+      
+      return isInEmailView;
     }
     
     return false;
@@ -60,9 +71,21 @@
     const senderNameElement = document.querySelector('span.go');
     const senderName = senderNameElement ? senderNameElement.textContent.trim() : '';
     
-    // Get email date
+    // Get email date and convert to ISO 8601
     const dateElement = document.querySelector('span.g3[title]');
     const dateString = dateElement ? dateElement.getAttribute('title') : '';
+    let isoDate = new Date().toISOString(); // Default to now
+    if (dateString) {
+      try {
+        // Parse Gmail's date format (e.g., "Jan 6, 2026, 12:46 PM") and convert to ISO 8601
+        const parsedDate = new Date(dateString);
+        if (!isNaN(parsedDate.getTime())) {
+          isoDate = parsedDate.toISOString();
+        }
+      } catch (error) {
+        console.error('[Lasker] Failed to parse email date:', error);
+      }
+    }
     
     // Get email body - target the last message in thread
     const emailBodies = document.querySelectorAll('.a3s.aiL, .ii.gt');
@@ -95,7 +118,7 @@
         email: senderEmailAttr
       },
       subject: subject,
-      date: dateString || new Date().toISOString(),
+      date: isoDate,
       body: body,
       threadId: threadId,
       labels: labels,
@@ -125,18 +148,19 @@
     return cleanedText.trim();
   }
   
-  // Create the extract button
+  // Create the extract button (floating badge style)
   function createExtractButton() {
     const button = document.createElement('button');
     button.id = BUTTON_ID;
     button.className = BUTTON_CLASS;
+    button.title = 'Extract to Lasker'; // Tooltip
+    button.setAttribute('aria-label', 'Extract email to Lasker');
+    
+    // Get the extension URL for the logo
+    const logoUrl = chrome.runtime.getURL('icons/icon48.png');
+    
     button.innerHTML = `
-      <svg class="lasker-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
-        <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
-        <line x1="12" y1="22.08" x2="12" y2="12"></line>
-      </svg>
-      <span class="lasker-btn-text">Extract to Lasker</span>
+      <img src="${logoUrl}" alt="Lasker" class="lasker-logo" />
     `;
     
     button.addEventListener('click', handleExtractClick);
@@ -162,15 +186,23 @@
     
     // Update button state
     button.disabled = true;
+    button.title = 'Extracting...';
+    button.classList.add('lasker-loading');
+    const logoUrl = chrome.runtime.getURL('icons/icon48.png');
     button.innerHTML = `
-      <svg class="lasker-icon lasker-spinner" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <circle cx="12" cy="12" r="10"></circle>
-      </svg>
-      <span class="lasker-btn-text">Extracting...</span>
+      <img src="${logoUrl}" alt="Lasker" class="lasker-logo lasker-spinner" />
     `;
     
     // Send message to extension
     try {
+      // Check if extension context is valid
+      if (!chrome.runtime || !chrome.runtime.id) {
+        console.error('[Lasker] Extension context invalidated. Please reload the extension.');
+        showNotification('Extension needs reload. Go to chrome://extensions and click reload on Lasker.', 'error');
+        resetButton();
+        return;
+      }
+      
       chrome.runtime.sendMessage({
         type: 'EXTRACT_EMAIL',
         emailData: currentEmailData
@@ -183,8 +215,24 @@
         }
         
         if (response && response.success) {
-          showNotification('Email extracted successfully! Opening Lasker...', 'success');
-          // Button will be reset when user returns to Gmail
+          showNotification('Email extracted successfully! Click the Lasker extension icon to continue.', 'success');
+          
+          // Update button to success state
+          button.disabled = true;
+          button.title = 'Extracted ✓';
+          button.classList.add('lasker-success');
+          button.classList.remove('lasker-loading');
+          button.innerHTML = `
+            <svg class="lasker-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+          `;
+          
+          // Reset button after 3 seconds to allow re-extraction
+          setTimeout(() => {
+            resetButton();
+            buttonInjected = false; // Allow re-injection if needed
+          }, 3000);
         } else {
           showNotification(response?.error || 'Failed to extract email', 'error');
           resetButton();
@@ -203,13 +251,11 @@
     if (!button) return;
     
     button.disabled = false;
+    button.title = 'Extract to Lasker';
+    button.classList.remove('lasker-success', 'lasker-loading');
+    const logoUrl = chrome.runtime.getURL('icons/icon48.png');
     button.innerHTML = `
-      <svg class="lasker-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
-        <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
-        <line x1="12" y1="22.08" x2="12" y2="12"></line>
-      </svg>
-      <span class="lasker-btn-text">Extract to Lasker</span>
+      <img src="${logoUrl}" alt="Lasker" class="lasker-logo" />
     `;
   }
   
@@ -235,12 +281,26 @@
   
   // Inject button into Gmail toolbar
   function injectButton() {
-    if (buttonInjected) return;
+    console.log('[Lasker] injectButton() called, buttonInjected:', buttonInjected);
     
-    // Check if button already exists
-    if (document.getElementById(BUTTON_ID)) {
+    // Check if button or container already exists
+    const existingButton = document.getElementById(BUTTON_ID);
+    const existingContainer = document.getElementById('lasker-button-container');
+    
+    if (existingButton && existingContainer) {
+      console.log('[Lasker] Button already exists, skipping injection');
       buttonInjected = true;
       return;
+    }
+    
+    // Clean up any orphaned elements
+    if (existingContainer) {
+      console.log('[Lasker] Removing orphaned container');
+      existingContainer.remove();
+    }
+    if (existingButton) {
+      console.log('[Lasker] Removing orphaned button');
+      existingButton.remove();
     }
     
     // When viewing an email, the action buttons are at the TOP of the page
@@ -291,20 +351,13 @@
     // Create and inject button
     const button = createExtractButton();
     
-    // Create a container for the button with proper positioning
+    // Create a floating container for the button
     const container = document.createElement('div');
     container.id = 'lasker-button-container';
-    container.style.position = 'sticky';
-    container.style.top = '0';
-    container.style.zIndex = '1000';
-    container.style.padding = '12px 16px';
-    container.style.backgroundColor = '#f8f9fa';
-    container.style.borderBottom = '1px solid #e5e7eb';
-    container.style.marginBottom = '16px';
     container.appendChild(button);
     
-    // Insert at the beginning
-    injectionPoint.insertBefore(container, injectionPoint.firstChild);
+    // Append to the injection point (will use CSS for positioning)
+    injectionPoint.appendChild(container);
     
     buttonInjected = true;
     console.log('[Lasker] ✓ Extract button injected successfully!');
@@ -312,11 +365,17 @@
   
   // Remove button when not in email view
   function removeButton() {
+    const container = document.getElementById('lasker-button-container');
+    if (container) {
+      container.remove();
+    }
+    
     const button = document.getElementById(BUTTON_ID);
     if (button) {
       button.remove();
-      buttonInjected = false;
     }
+    
+    buttonInjected = false;
   }
   
   // Check and update UI based on current view
@@ -324,17 +383,42 @@
     const currentUrl = window.location.href;
     const inEmailView = isEmailView();
     
+    // Get current email subject to detect email changes
+    const subjectElement = document.querySelector('h2.hP');
+    const currentSubject = subjectElement ? subjectElement.textContent.trim() : '';
+    
+    console.log('[Lasker] checkAndUpdateUI:', {
+      url: currentUrl,
+      inEmailView,
+      buttonInjected,
+      currentSubject: currentSubject.substring(0, 50),
+      lastSubject: lastEmailSubject.substring(0, 50)
+    });
+    
+    // Check if we're viewing a different email (subject changed)
+    if (currentSubject && currentSubject !== lastEmailSubject && buttonInjected) {
+      console.log('[Lasker] New email detected (subject changed), resetting...');
+      removeButton();
+      lastEmailSubject = currentSubject;
+    }
+    
     // Check email view state instead of just URL changes
     // This handles Gmail's SPA navigation that may not change the URL
     if (inEmailView && !buttonInjected) {
+      console.log('[Lasker] Attempting to inject button in 500ms...');
+      lastEmailSubject = currentSubject;
       // We're in email view and button isn't injected yet
       // Wait a bit for Gmail to fully render
       setTimeout(() => {
-        injectButton();
+        if (isEmailView()) {
+          injectButton();
+        }
       }, 500);
     } else if (!inEmailView && buttonInjected) {
       // We left email view, remove button
+      console.log('[Lasker] Removing button - not in email view');
       removeButton();
+      lastEmailSubject = '';
     }
     
     lastProcessedUrl = currentUrl;
@@ -346,7 +430,11 @@
     const currentUrl = window.location.href;
     if (currentUrl !== lastUrl) {
       lastUrl = currentUrl;
-      buttonInjected = false; // Reset injection flag
+      
+      // Clean up old button/container before navigating to new email
+      removeButton();
+      
+      // Check and inject button for new email
       checkAndUpdateUI();
     }
   });

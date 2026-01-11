@@ -2,6 +2,19 @@
 
 A Chrome extension that captures customer insights from both voice recordings and email conversations. Automatically processes feedback into actionable product insights through your Supabase + n8n pipeline.
 
+## 🎉 Current Status: FULLY OPERATIONAL
+
+**✅ Extension Frontend:** Fully functional - voice recording and email extraction work end-to-end  
+**✅ Backend Setup:** Complete - database and n8n workflows processing insights  
+**✅ Production Ready:** System is live and extracting insights from emails and voice recordings!
+
+**What's Working:**
+- 🎤 Voice recording with transcription (via Whisper API)
+- 📧 Email extraction from Gmail with one-click
+- 🤖 Automated insight extraction (via OpenAI)
+- 🏷️ Three-stage classification (semantic search → feature → journey stage)
+- 📊 All data stored in Supabase for analysis
+
 ## Features
 
 ### Voice Recording
@@ -10,11 +23,14 @@ A Chrome extension that captures customer insights from both voice recordings an
 - **Automatic transcription** - Audio is transcribed via Whisper API in the Supabase edge function
 - **Seamless processing** - Recordings are automatically processed into insights by your n8n workflow
 
-### Email Extraction (NEW)
+### Email Extraction ✅ (FULLY OPERATIONAL)
 - **Gmail integration** - Automatically detects when you're viewing an email in Gmail
 - **One-click extraction** - Extract insights from customer emails with a single click
 - **Smart parsing** - Removes signatures, quoted replies, and extracts key content
 - **Email preview** - Review email details before submitting for processing
+- **Direct Supabase submission** - Emails saved to `email_submissions` table via REST API
+- **Automated processing** - n8n workflows extract insights using OpenAI within minutes
+- **Three-stage classification** - Semantic search → Feature mapping → Journey stage
 - **Multi-provider ready** - Architecture supports Outlook, Yahoo, and other providers
 
 ### General
@@ -72,21 +88,22 @@ You need to create three PNG icon files:
 - Use any image editor to create microphone/voice-themed icons
 - Ensure they are square PNG files at the specified sizes
 
-### 2. Configure Webhook URLs (REQUIRED)
+### 2. Configure Backend URLs
 
-**Voice Function URL** - If your Supabase edge function URL is different, update it in `popup.js`:
-
+**Voice Function URL** - Currently configured:
 ```javascript
-const VOICE_EDGE_FUNCTION_URL = 'https://your-project.supabase.co/functions/v1/submit-voice-insight';
+const VOICE_EDGE_FUNCTION_URL = 'https://wrayzjdnlimxzqcswots.supabase.co/functions/v1/submit-voice-insight';
 ```
 
-**Email Webhook URL** - Update the n8n webhook URL for email submissions in `popup.js`:
-
+**Supabase Configuration** - Currently configured:
 ```javascript
-const EMAIL_WEBHOOK_URL = 'https://YOUR_N8N_INSTANCE/webhook/email-submission';
+const SUPABASE_URL = 'https://wrayzjdnlimxzqcswots.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJh...'; // ✅ Configured
+const EMAIL_SUBMISSIONS_URL = `${SUPABASE_URL}/rest/v1/email_submissions`;
 ```
 
-⚠️ **Important**: You must configure the `EMAIL_WEBHOOK_URL` before email extraction will work.
+✅ **Email submissions** go directly to Supabase REST API (no n8n webhook needed for submission)  
+⚠️ **Backend processing** requires running database migrations + setting up n8n workflows
 
 ### 3. Load Extension in Chrome
 
@@ -111,8 +128,10 @@ const EMAIL_WEBHOOK_URL = 'https://YOUR_N8N_INSTANCE/webhook/email-submission';
 3. Look for the "Extract to Lasker" button in the Gmail toolbar
 4. Click the button to extract the email
 5. The extension popup will open with an email preview
-6. Click "Extract Insights" to submit the email for processing
+6. Click "Extract Insights" to submit to Supabase
 7. You should see a success message
+8. Wait ~5 minutes for n8n to process (check Supabase for insights)
+9. ✅ Insights will be automatically extracted and classified!
 
 ## File Structure
 
@@ -147,34 +166,35 @@ https://wrayzjdnlimxzqcswots.supabase.co/functions/v1/submit-voice-insight
 
 To change this, edit the `VOICE_EDGE_FUNCTION_URL` constant in `popup.js`.
 
-### Email Webhook URL
+### Email Submissions Configuration
 
-**Required Configuration**: You must set up an n8n webhook and update the URL in `popup.js`:
+**Current Setup:** Emails are submitted directly to Supabase via REST API:
 
 ```javascript
-const EMAIL_WEBHOOK_URL = 'https://YOUR_N8N_INSTANCE/webhook/email-submission';
+const EMAIL_SUBMISSIONS_URL = `${SUPABASE_URL}/rest/v1/email_submissions`;
 ```
 
-The webhook should expect this payload format:
+The submission format sent to Supabase:
 ```json
 {
-  "type": "email",
-  "email": {
-    "from": { "name": "...", "email": "..." },
-    "subject": "...",
-    "body": "...",
-    "date": "...",
-    "threadId": "...",
-    "labels": [],
-    "sourceUrl": "..."
-  },
+  "from_email": "sender@example.com",
+  "from_name": "Sender Name",
+  "subject": "Email subject",
+  "body": "Email content...",
+  "email_date": "2026-01-10T...",
+  "thread_id": "gmail-thread-id",
+  "source": "gmail",
+  "source_url": "https://mail.google.com/...",
   "metadata": {
-    "userId": "user@example.com",
-    "timestamp": "2026-01-04T...",
-    "source": "gmail"
-  }
+    "labels": ["Important"],
+    "user_email": "your-email@example.com"
+  },
+  "processing_status": "pending",
+  "created_at": "2026-01-10T..."
 }
 ```
+
+**Processing:** n8n workflows poll the `email_submissions` table to process pending emails and extract insights.
 
 ### Maximum Recording Duration
 
@@ -361,31 +381,45 @@ Potential improvements for future versions:
 - Keyboard shortcuts for quick capture
 - Dark mode support
 
-## Next Steps
+## ✅ Development Status - ALL PHASES COMPLETE
 
-### Phase 1 (Current) ✅
+### ✅ Phase 1: Frontend (COMPLETE)
 - [x] Gmail detection and UI injection
 - [x] Email extraction and parsing
 - [x] Extension popup with email preview
 - [x] Message passing between content script and extension
+- [x] Direct Supabase REST API integration
+- [x] Voice recording fully functional
+- [x] Email extraction UI complete
+- [x] User email setup and storage
+- [x] Error handling and loading states
 
-### Phase 2 (To Be Built)
-- [ ] **n8n Workflow Setup**:
-  - [ ] Create "Email Flow - Submission Processor" workflow
-  - [ ] Create "Email Flow - Process Insights" sub-workflow
-  - [ ] Set up webhook endpoint
-  - [ ] Configure OpenAI integration
-  - [ ] Set up three-stage classification
-- [ ] **Database Setup**:
-  - [ ] Create `email_submissions` table in Supabase
-  - [ ] Add `email_submission_id` column to `insights` table
-  - [ ] Set up indexes for performance
+### ✅ Phase 2: Backend Setup (COMPLETE)
+- [x] **Database Setup**:
+  - [x] Run migration `01_create_email_submissions_table.sql`
+  - [x] Run migration `02_add_email_submission_to_insights.sql`
+  - [x] Run migration `03_create_helper_functions.sql`
+  - [x] Verify tables with test insert
+  
+- [x] **n8n Workflow Setup**:
+  - [x] Add Supabase and OpenAI credentials to n8n
+  - [x] Create "Email Flow - Submission Processor" workflow
+  - [x] Create "Email Flow - Process Insights" sub-workflow
+  - [x] Configure OpenAI nodes with prompts
+  - [x] Test with sample email
+  - [x] Activate workflows
 
-### Phase 3 (Future)
+**✅ System is now fully operational!** See `PHASE_3_5_IMPLEMENTATION_GUIDE.md` for implementation details.
+
+### 🚀 Phase 3: Future Enhancements (Optional)
 - [ ] Multi-provider support (Outlook, Yahoo, etc.)
 - [ ] Thread detection and deduplication
 - [ ] Customer auto-linking by email domain
 - [ ] Advanced reply chain parsing
+- [ ] Dashboard view of insights
+- [ ] Real-time processing status
+- [ ] Browser notifications when insights are processed
+- [ ] Keyboard shortcuts for quick capture
 
 ## License
 

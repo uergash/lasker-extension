@@ -37,6 +37,12 @@
       "css": ["content-scripts/gmail.css"],
       "run_at": "document_idle"
     }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["icons/*.png"],
+      "matches": ["https://mail.google.com/*"]
+    }
   ]
 }
 
